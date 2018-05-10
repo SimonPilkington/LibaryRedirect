@@ -16,8 +16,10 @@
 
 #undef NOMINMAX
 
-template <class T, typename = std::enable_if<std::is_pointer<T>::value, T>::type> bstr_t ToBStr(T str)
+template <class T> bstr_t ToBStr(T str)
 {
+	static_assert(std::is_trivially_assignable<const char*&, T>::value || std::is_trivially_assignable<const wchar_t*&, T>::value, "T must be a pointer to string");
+
 	try
 	{
 		return bstr_t(str);

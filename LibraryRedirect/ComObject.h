@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <type_traits>
 #include <objbase.h>
 
 #include "ComException.h"
@@ -13,6 +14,8 @@ template <class T> class IUnknownNoAddRefRelease : public T
 
 template <typename T> class ComObject
 {
+	static_assert(std::is_base_of<IUnknown, T>::value, "T must inherit from IUnknown");
+
 	T *m_pInstance;
 
 public:
