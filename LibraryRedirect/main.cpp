@@ -1,7 +1,9 @@
 #include "CommandLine.h"
 
 #include <iostream>
+#include <string>
 #include <type_traits>
+#include <filesystem>
 
 #define NOMINMAX
 
@@ -16,43 +18,18 @@
 
 #undef NOMINMAX
 
-template <class T, typename std::enable_if_t<
-	std::is_trivially_assignable<const char*&, T>::value || std::is_trivially_assignable<const wchar_t*&, T>::value
-	, T>* = nullptr> bstr_t ToBStr(T str)
+template <class T> bstr_t ToBStr(T pStr)
 {
+	static_assert(std::is_assignable_v<const char*&, T> || std::is_assignable_v<const wchar_t*&, T>);
+
 	try
 	{
-		return bstr_t(str);
+		return bstr_t(pStr);
 	}
 	catch (const _com_error &x)
 	{
 		throw ComException(x.Error(), "String conversion failed.");
 	}
-}
-
-template <class T, typename std::enable_if_t<
-	std::is_base_of<std::string, T>::value || std::is_base_of<std::wstring, T>::value
-	, T>* = nullptr> bstr_t ToBStr(T str)
-{
-	try
-	{
-		return bstr_t(str.c_str());
-	}
-	catch (const _com_error &x)
-	{
-		throw ComException(x.Error(), "String conversion failed.");
-	}
-}
-
-void RedirectLibrary(const KNOWNFOLDERID &rfid, LPCWSTR pRedirectDest)
-{
-	ComObject<IKnownFolderManager> knownFolderManager(CLSID_KnownFolderManager);
-
-	LPWSTR error;
-	HRESULT hr = knownFolderManager->Redirect(rfid, nullptr, KF_REDIRECT_OWNER_USER | KF_REDIRECT_SET_OWNER_EXPLICIT, pRedirectDest, 0, nullptr, &error);
-
-	if (!SUCCEEDED(hr))
-		throw ComException(hr, ToBStr(error));
 }
 
 std::string GetBinaryName(std::string fullPath)
@@ -72,12 +49,23 @@ std::string GetBinaryName(std::string fullPath)
 	return fullPath.substr(index + 1);
 }
 
+void RedirectLibrary(const KNOWNFOLDERID &rfid, std::filesystem::path redirectDest)
+{
+	ComObject<IKnownFolderManager> knownFolderManager(CLSID_KnownFolderManager);
+
+	LPWSTR error;
+	HRESULT hr = knownFolderManager->Redirect(rfid, nullptr, KF_REDIRECT_OWNER_USER | KF_REDIRECT_SET_OWNER_EXPLICIT, redirectDest.c_str(), 0, nullptr, &error);
+
+	if (!SUCCEEDED(hr))
+		throw ComException(hr, ToBStr(error));
+}
+
 int main(int argc, char* argv[])
 {
 	if (!SetConsoleOutputCP(1252))
 		std::cerr << "Failed to set console output codepage. Characters may display incorrectly." << std::endl;
 
-	CommandLine cmdLine(GetBinaryName(argv[0]));
+	CommandLine::Parser cmdLine(GetBinaryName(argv[0]));
 
 	try
 	{
@@ -88,14 +76,18 @@ int main(int argc, char* argv[])
 
 		InitCom initCom;
 
-		if (cmdLine.HasDesktopPath())
-			RedirectLibrary(FOLDERID_Desktop, ToBStr(cmdLine.GetDesktopPath()));
+		{
+			using CommandLine::Library;
 
-		if (cmdLine.HasDocumentsPath())
-			RedirectLibrary(FOLDERID_Documents, ToBStr(cmdLine.GetDocumentsPath()));
+			if (cmdLine.HasPath<Library::Desktop>())
+				RedirectLibrary(FOLDERID_Desktop, cmdLine.GetPath<Library::Desktop>());
 
-		if (cmdLine.HasDownloadsPath())
-			RedirectLibrary(FOLDERID_Downloads, ToBStr(cmdLine.GetDownloadsPath()));
+			if (cmdLine.HasPath<Library::Documents>())
+				RedirectLibrary(FOLDERID_Documents, cmdLine.GetPath<Library::Documents>());
+
+			if (cmdLine.HasPath<Library::Downloads>())
+				RedirectLibrary(FOLDERID_Downloads, cmdLine.GetPath<Library::Downloads>());
+		}
 
 		return 0;
 	}
@@ -106,7 +98,9 @@ int main(int argc, char* argv[])
 	}
 	catch (const ComException &x)
 	{
-		std::cerr << "Fatal error: " << x.what() << " (HRESULT 0x" << std::hex << x.GetHResult() << std::dec << ')' << std::endl;
+		std::cerr << "Fatal error: " << x.what() << 
+			" (HRESULT 0x" << std::hex << x.GetHResult() << std::dec << ')' 
+			<< std::endl;
 	}
 
 	return -1;

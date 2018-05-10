@@ -8,6 +8,8 @@
 
 template <class T> class IUnknownNoAddRefRelease : public T
 {
+	static_assert(std::is_base_of<IUnknown, T>::value, "T must inherit from IUnknown");
+
 	virtual ULONG STDMETHODCALLTYPE AddRef() override = 0;
 	virtual ULONG STDMETHODCALLTYPE Release() override = 0;
 };
@@ -67,13 +69,16 @@ public:
 	inline IUnknownNoAddRefRelease<T> *operator->() const
 	{
 		if (!m_pInstance)
-			throw ComException(E_NOT_VALID_STATE, "Instance has not been created.");
+			throw ComException(E_NOT_VALID_STATE, "COM instance has not been created.");
 
 		return static_cast<IUnknownNoAddRefRelease<T> *>(m_pInstance);
 	}
 
 	inline T **operator&() const noexcept
 	{
+		if (m_pInstance)
+			throw ComException(E_ILLEGAL_METHOD_CALL, "This object already manages a COM instance."); // and this would enable leaking it
+
 		return &m_pInstance;
 	}
 };

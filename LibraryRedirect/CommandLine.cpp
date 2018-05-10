@@ -2,18 +2,22 @@
 
 #include "CommandLine.h"
 
-CommandLine::CommandLine(std::string binaryFilename)
-	: m_app("Windows Library Redirect", binaryFilename)
+namespace CommandLine
 {
-	const std::string typeName = "PATH";
-
-	std::array<CLI::Option*, 3> options
+	Parser::Parser(std::string binaryFilename)
+		: m_app("Windows Library Redirect", binaryFilename)
 	{
-		m_app.add_option("--documents", m_documentsPath, "Set Documents path to " + typeName),
-		m_app.add_option("--downloads", m_downloadsPath, "Set Downloads path to " + typeName),
-		m_app.add_option("--desktop", m_desktopPath, "Set Desktop path to " + typeName)
-	};
+		const size_t optionsCount = 3;
+		const std::string typeName = "PATH";
 
-	for (CLI::Option* option : options)
-		option->set_type_name(typeName);
+		std::array<CLI::Option*, optionsCount> options
+		{
+			m_app.add_option("--documents", m_pathMap[Library::Documents], "Set Documents path to " + typeName),
+			m_app.add_option("--downloads", m_pathMap[Library::Downloads], "Set Downloads path to " + typeName),
+			m_app.add_option("--desktop", m_pathMap[Library::Desktop], "Set Desktop path to " + typeName),
+		};
+
+		for (CLI::Option* option : options)
+			option->set_type_name(typeName);
+	}
 }
