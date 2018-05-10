@@ -25,17 +25,17 @@ public:
 		m_app.parse(argc, argv);
 	}
 
-	inline const char *GetDocumentsPath() const
+	inline std::string GetDocumentsPath() const
 	{
-		return m_documentsPath.c_str();
+		return m_documentsPath;
 	}
 
-	inline const char *GetDesktopPath() const
+	inline std::string GetDesktopPath() const
 	{
-		return m_desktopPath.c_str();
+		return m_desktopPath;
 	}
 
-	inline const char *GetDownloadsPath() const
+	inline std::string GetDownloadsPath() const
 	{
 		return m_downloadsPath.c_str();
 	}

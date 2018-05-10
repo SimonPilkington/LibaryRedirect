@@ -16,13 +16,27 @@
 
 #undef NOMINMAX
 
-template <class T> bstr_t ToBStr(T str)
+template <class T, typename std::enable_if_t<
+	std::is_trivially_assignable<const char*&, T>::value || std::is_trivially_assignable<const wchar_t*&, T>::value
+	, T>* = nullptr> bstr_t ToBStr(T str)
 {
-	static_assert(std::is_trivially_assignable<const char*&, T>::value || std::is_trivially_assignable<const wchar_t*&, T>::value, "T must be a pointer to string");
-
 	try
 	{
 		return bstr_t(str);
+	}
+	catch (const _com_error &x)
+	{
+		throw ComException(x.Error(), "String conversion failed.");
+	}
+}
+
+template <class T, typename std::enable_if_t<
+	std::is_base_of<std::string, T>::value || std::is_base_of<std::wstring, T>::value
+	, T>* = nullptr> bstr_t ToBStr(T str)
+{
+	try
+	{
+		return bstr_t(str.c_str());
 	}
 	catch (const _com_error &x)
 	{
